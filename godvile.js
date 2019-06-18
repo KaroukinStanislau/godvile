@@ -1,5 +1,21 @@
 const puppeteer = require('puppeteer');
 var cloudinary = require('cloudinary');
+var express = require('express')
+
+var port = process.env.PORT || 3000;
+
+var app = express();
+
+app.get('/', function (req, res) {
+    godvile()
+        .then(data => {
+            res.send(`<a href="${data.secure_url}">image</a>`)
+        })
+        .catch(err => res.status(500).send(err))
+});
+app.listen(port, function () {
+    console.log(`Example app listening on port ${port}!`);
+});
 
 cloudinary.config({
     cloud_name: process.env.CLOUD_NAME,
@@ -10,7 +26,7 @@ cloudinary.config({
 const username_val = process.env.GODVILE_USERNAME;
 const password_val = process.env.GODVILE_PASSWORD;
 
-(async () => {
+const godvile = async () => {
 
     const d = new Date();
     const current_time = `${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}_${d.getMinutes()}`;
@@ -23,7 +39,7 @@ const password_val = process.env.GODVILE_PASSWORD;
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--single-process'
+            // '--single-process'
         ],
         // headless: false,
         ignoreHTTPSErrors: true
@@ -95,21 +111,25 @@ const password_val = process.env.GODVILE_PASSWORD;
         });
     }
 
+    var result = 'empty';
     if (shot) {
-        cloudinary.v2.uploader.upload_stream({
-                public_id: `godvile/${action}`
-            },
-            function (error, cloudinary_result) {
-                if (error) {
-                    console.error('Upload to cloudinary failed: ', error);
-
+        return new Promise(function (resolve, reject) {
+            cloudinary.v2.uploader.upload_stream({
+                    public_id: `godvile/${action}`
+                },
+                function (error, cloudinary_result) {
+                    if (error) {
+                        console.error('Upload to cloudinary failed: ', error);
+                        reject(error);
+                    }
+                    console.log(cloudinary_result);
+                    resolve(cloudinary_result);
                 }
-                console.log(cloudinary_result);
-            }
-        ).end(shot);
+            ).end(shot);
+        });
     }
 
     // await new Promise(done => setTimeout(done, 1000 * 60 * 60));
     await browser.close();
-
-})();
+    // return result;
+};

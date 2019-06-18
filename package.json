@@ -6,6 +6,7 @@
   "dependencies": {
     "cloudinary": "^1.14.0",
     "dotenv": "^8.0.0",
+    "express": "^4.17.1",
     "puppeteer": "^1.17.0"
   },
   "devDependencies": {},
