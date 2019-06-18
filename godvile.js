@@ -15,7 +15,13 @@ const password_val = process.env.GODVILE_PASSWORD;
     const d = new Date();
     const current_time = `${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}_${d.getMinutes()}`;
 
+    console.log('runned at ' + current_time);
+
     const browser = await puppeteer.launch({
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+        ],
         headless: false,
         ignoreHTTPSErrors: true
     });
@@ -47,16 +53,37 @@ const password_val = process.env.GODVILE_PASSWORD;
 
     await page.waitForNavigation();
 
-    const linkHandlers = await page.$x("//a[contains(text(), 'Сделать хорошо')]");
-    if (linkHandlers.length > 0) {
-        // await linkHandlers[0].click();
-        await page.waitFor(5000);
-        await page.screenshot({
-            path: 'make good ' + current_time + '.png'
-        });
+    var makeAction = false;
 
-    } else {
-        console.log("Link not found " + current_time);
+    const makeGood = await page.$x("//a[contains(text(), 'Сделать хорошо')]");
+    if (makeGood.length > 0) {
+        if (await makeGood[0].isIntersectingViewport()) {
+            await makeGood[0].click();
+            await page.waitFor(10 * 1000);
+            await page.screenshot({
+                path: 'make good ' + current_time + '.png'
+            });
+            makeAction = true;
+            console.log('make good at ' + current_time);
+        } else {
+            // The element IS NOT visible within the current viewport.
+            const resurrect = await page.$x("//a[contains(text(), 'Воскресить')]");
+            if (resurrect.length > 0) {
+                if (await resurrect[0].isIntersectingViewport()) {
+                    await resurrect[0].click();
+                    await page.waitFor(10 * 1000);
+                    await page.screenshot({
+                        path: 'resurrect ' + current_time + '.png'
+                    });
+                    makeAction = true;
+                    console.log('resurrect at ' + current_time);
+                }
+            }
+        }
+
+    }
+    if (!makeAction) {
+        console.log("can't find any link at " + current_time);
         await page.screenshot({
             path: 'Link not found ' + current_time + '.png'
         });
