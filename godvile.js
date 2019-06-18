@@ -22,7 +22,7 @@ const password_val = process.env.GODVILE_PASSWORD;
             '--no-sandbox',
             '--disable-setuid-sandbox',
         ],
-        headless: false,
+        // headless: false,
         ignoreHTTPSErrors: true
     });
     const page = await browser.newPage();
