@@ -54,9 +54,9 @@ const godvile = async () => {
     function handleClose(msg) {
 
         console.log(msg);
-        page.screenshot({
-            path: 'error ' + current_time + '.png'
-        });
+        // page.screenshot({
+        //     path: 'error ' + current_time + '.png'
+        // });
         page.close();
         browser.close();
         process.exit(1);
@@ -81,7 +81,7 @@ const godvile = async () => {
             await makeGood[0].click();
             await page.waitFor(10 * 1000);
             shot = await page.screenshot({
-                path: 'make good ' + current_time + '.png'
+                // path: 'make good ' + current_time + '.png'
             });
             makeAction = true;
             action = 'make good at ' + current_time;
@@ -93,7 +93,7 @@ const godvile = async () => {
                     await resurrect[0].click();
                     await page.waitFor(10 * 1000);
                     shot = await page.screenshot({
-                        path: 'resurrect ' + current_time + '.png'
+                        // path: 'resurrect ' + current_time + '.png'
                     });
                     makeAction = true;
                     action = 'resurrect at ' + current_time;
@@ -107,11 +107,12 @@ const godvile = async () => {
         action = "can't find any link at " + current_time;
         console.log(action);
         shot = await page.screenshot({
-            path: 'Link not found ' + current_time + '.png'
+            // path: 'Link not found ' + current_time + '.png'
         });
     }
-
-    var result = 'empty';
+    
+    await browser.close();
+    
     if (shot) {
         return new Promise(function (resolve, reject) {
             cloudinary.v2.uploader.upload_stream({
@@ -122,7 +123,7 @@ const godvile = async () => {
                         console.error('Upload to cloudinary failed: ', error);
                         reject(error);
                     }
-                    console.log(cloudinary_result);
+                    console.log({time: cloudinary_result.created_at, url: cloudinary_result.secure_url});
                     resolve(cloudinary_result);
                 }
             ).end(shot);
@@ -130,6 +131,4 @@ const godvile = async () => {
     }
 
     // await new Promise(done => setTimeout(done, 1000 * 60 * 60));
-    await browser.close();
-    // return result;
 };
