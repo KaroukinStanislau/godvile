@@ -122,9 +122,10 @@ const godvile = async () => {
                     if (error) {
                         console.error('Upload to cloudinary failed: ', error);
                         reject(error);
+                    } else {
+                        console.log({time: cloudinary_result.created_at, url: cloudinary_result.secure_url});
+                        resolve(cloudinary_result);
                     }
-                    console.log({time: cloudinary_result.created_at, url: cloudinary_result.secure_url});
-                    resolve(cloudinary_result);
                 }
             ).end(shot);
         });
