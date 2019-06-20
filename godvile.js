@@ -11,7 +11,10 @@ app.get('/', function (req, res) {
         .then(data => {
             res.send(`<a href="${data.secure_url}">image</a>`)
         })
-        .catch(err => res.status(500).send(err))
+        .catch(err => {
+            console.log(err);
+            res.status(500).send(err.toString());
+        })
 });
 app.listen(port, function () {
     console.log(`Example app listening on port ${port}!`);
@@ -27,7 +30,6 @@ const username_val = process.env.GODVILE_USERNAME;
 const password_val = process.env.GODVILE_PASSWORD;
 
 const godvile = async () => {
-
     const d = new Date();
     const current_time = `${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}_${d.getMinutes()}`;
     let shot;
