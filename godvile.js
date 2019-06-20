@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 var cloudinary = require('cloudinary');
 var express = require('express');
 var moment = require('moment');
+var fs = require("fs");
 
 var port = process.env.PORT || 3000;
 
@@ -21,37 +22,79 @@ cloudinary.config({
     api_secret: process.env.API_SECRET
 });
 
-const username_val = process.env.GODVILE_USERNAME;
-const password_val = process.env.GODVILE_PASSWORD;
-const hoursBetweenExec = process.env.HOURS_BETWEEN_SCREENSHOOTS || 12;
+var username_val = process.env.GODVILE_USERNAME;
+var password_val = process.env.GODVILE_PASSWORD;
+var hoursBetweenExec = process.env.HOURS_BETWEEN_SCREENSHOOTS || 12;
+var fileName = process.env.FILE_NAME || 'prevExecTime.txt';
 
 var previousExecution;
 var currentExecution;
 
-function takeScreenshoot(res) {
-    if (!isExecutedRecently()) {
+async function takeScreenshoot(res) {
+    if (! await isExecutedRecently()) {
+        // if (false) {
         godvile()
             .then(data => {
+                previousExecution = moment();
+                writeToFile();
                 res.send(`<a href="${data.secure_url}">image</a>`)
             })
             .catch(err => {
                 console.log(err);
                 res.status(500).send(err.toString());
             });
-        previousExecution = moment();
     } else {
         console.log(`time of execution has not come, last was ${getDiffAsHours()} hours ago. current delay: ${hoursBetweenExec}`);
         res.send('time of execution has not come');
     }
 }
 
-function isExecutedRecently() {
+async function isExecutedRecently() {
     if (!previousExecution) {
-        return false;
-    } else if (getDiffAsHours() >= hoursBetweenExec) {
+        try {
+            var a = await readFromFile();
+        } catch (err) {
+            return false;
+        }
+        if (moment(a, "YYYY-MM-DD-HH-mm-ss").isValid()) {
+            previousExecution = moment(a, "YYYY-MM-DD-HH-mm-ss");
+        }
+        if (!previousExecution) {
+            return false;
+        }
+    }
+    if (getDiffAsHours() >= hoursBetweenExec) {
         return false;
     }
     return true;
+}
+
+function writeToFile() {
+    return new Promise((resolve, reject) => {
+        fs.writeFile(fileName, moment(previousExecution, "YYYY-MM-DD-HH-mm-ss").format(), (err) => {
+            if (err) {
+                console.log(err);
+                reject();
+            } else {
+                console.log("Successfully Written to File.");
+                resolve();
+            }
+        });
+    });
+}
+
+function readFromFile() {
+    return new Promise((resolve, reject) => {
+        fs.readFile(fileName, function (err, buf) {
+            if (err) {
+                console.log(err)
+                reject(err);
+            } else {
+                console.log(`readed from file ${buf.toString()}`);
+                resolve(buf.toString());
+            }
+        });
+    });
 }
 
 function getDiffAsHours() {

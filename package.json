@@ -14,7 +14,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node --require dotenv/config --optimize_for_size --max_old_space_size=460 --gc_interval=100 godvile.js",
-    "debug": "node --inspect godvile.js"
+    "debug": "node --inspect --require dotenv/config godvile.js"
   },
   "author": "me",
   "license": "ISC"
