@@ -1,20 +1,15 @@
 const puppeteer = require('puppeteer');
 var cloudinary = require('cloudinary');
-var express = require('express')
+var express = require('express');
+var moment = require('moment');
 
 var port = process.env.PORT || 3000;
 
 var app = express();
 
 app.get('/', function (req, res) {
-    godvile()
-        .then(data => {
-            res.send(`<a href="${data.secure_url}">image</a>`)
-        })
-        .catch(err => {
-            console.log(err);
-            res.status(500).send(err.toString());
-        })
+    currentExecution = moment();
+    takeScreenshoot(res);
 });
 app.listen(port, function () {
     console.log(`Example app listening on port ${port}!`);
@@ -28,6 +23,40 @@ cloudinary.config({
 
 const username_val = process.env.GODVILE_USERNAME;
 const password_val = process.env.GODVILE_PASSWORD;
+const hoursBetweenExec = process.env.HOURS_BETWEEN_SCREENSHOOTS || 12;
+
+var previousExecution;
+var currentExecution;
+
+function takeScreenshoot(res) {
+    if (!isExecutedRecently()) {
+        godvile()
+            .then(data => {
+                res.send(`<a href="${data.secure_url}">image</a>`)
+            })
+            .catch(err => {
+                console.log(err);
+                res.status(500).send(err.toString());
+            });
+        previousExecution = moment();
+    } else {
+        console.log(`time of execution has not come, last was ${getDiffAsHours()} hours ago. current delay: ${hoursBetweenExec}`);
+        res.send('time of execution has not come');
+    }
+}
+
+function isExecutedRecently() {
+    if (!previousExecution) {
+        return false;
+    } else if (getDiffAsHours() >= hoursBetweenExec) {
+        return false;
+    }
+    return true;
+}
+
+function getDiffAsHours() {
+    return moment.duration(currentExecution.diff(previousExecution)).asHours();
+}
 
 const godvile = async () => {
     const d = new Date();
@@ -112,9 +141,9 @@ const godvile = async () => {
             // path: 'Link not found ' + current_time + '.png'
         });
     }
-    
+
     await browser.close();
-    
+
     if (shot) {
         return new Promise(function (resolve, reject) {
             cloudinary.v2.uploader.upload_stream({
@@ -125,7 +154,10 @@ const godvile = async () => {
                         console.error('Upload to cloudinary failed: ', error);
                         reject(error);
                     } else {
-                        console.log({time: cloudinary_result.created_at, url: cloudinary_result.secure_url});
+                        console.log({
+                            time: cloudinary_result.created_at,
+                            url: cloudinary_result.secure_url
+                        });
                         resolve(cloudinary_result);
                     }
                 }
