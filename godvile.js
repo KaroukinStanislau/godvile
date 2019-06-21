@@ -1,31 +1,20 @@
 const puppeteer = require('puppeteer');
-var cloudinary = require('cloudinary');
 var express = require('express');
 var moment = require('moment');
 var fs = require("fs");
-
-var port = process.env.PORT || 3000;
-
 var app = express();
+
+var config = require('./config');
+var cloudinary = require('./cloudinary');
+
 
 app.get('/', function (req, res) {
     currentExecution = moment();
     takeScreenshoot(res);
 });
-app.listen(port, function () {
-    console.log(`Example app listening on port ${port}!`);
+app.listen(config.app.port, function () {
+    console.log(`Example app listening on port ${config.app.port}!`);
 });
-
-cloudinary.config({
-    cloud_name: process.env.CLOUD_NAME,
-    api_key: process.env.API_KEY,
-    api_secret: process.env.API_SECRET
-});
-
-var username_val = process.env.GODVILE_USERNAME;
-var password_val = process.env.GODVILE_PASSWORD;
-var hoursBetweenExec = process.env.HOURS_BETWEEN_SCREENSHOOTS || 12;
-var fileName = process.env.FILE_NAME || 'prevExecTime.txt';
 
 var previousExecution;
 var currentExecution;
@@ -44,7 +33,7 @@ async function takeScreenshoot(res) {
                 res.status(500).send(err.toString());
             });
     } else {
-        console.log(`time of execution has not come, last was ${getDiffAsHours()} hours ago. current delay: ${hoursBetweenExec}`);
+        console.log(`time of execution has not come, last was ${getDiffAsHours()} hours ago. current delay: ${config.app.hoursBetweenExec}`);
         res.send('time of execution has not come');
     }
 }
@@ -63,7 +52,7 @@ async function isExecutedRecently() {
             return false;
         }
     }
-    if (getDiffAsHours() >= hoursBetweenExec) {
+    if (getDiffAsHours() >= config.app.hoursBetweenExec) {
         return false;
     }
     return true;
@@ -71,10 +60,10 @@ async function isExecutedRecently() {
 
 function writeToFile() {
     return new Promise((resolve, reject) => {
-        fs.writeFile(fileName, moment(previousExecution, "YYYY-MM-DD-HH-mm-ss").format(), (err) => {
+        fs.writeFile(config.app.fileName, moment(previousExecution, "YYYY-MM-DD-HH-mm-ss").format(), (err) => {
             if (err) {
                 console.log(err);
-                reject();
+                reject(err);
             } else {
                 console.log("Successfully Written to File.");
                 resolve();
@@ -85,7 +74,7 @@ function writeToFile() {
 
 function readFromFile() {
     return new Promise((resolve, reject) => {
-        fs.readFile(fileName, function (err, buf) {
+        fs.readFile(config.app.fileName, function (err, buf) {
             if (err) {
                 console.log(err)
                 reject(err);
@@ -126,11 +115,7 @@ const godvile = async () => {
     });
 
     function handleClose(msg) {
-
         console.log(msg);
-        // page.screenshot({
-        //     path: 'error ' + current_time + '.png'
-        // });
         page.close();
         browser.close();
         process.exit(1);
@@ -138,9 +123,9 @@ const godvile = async () => {
 
     await page.goto('https://godville.net/superhero');
     const login = await page.$('#username');
-    await login.type(username_val);
+    await login.type(config.app.username_val);
     const password = await page.$('#password');
-    await password.type(password_val);
+    await password.type(config.app.password_val);
     const input = await page.$('input[type=submit][value="Войти!"');
     await input.click();
 
@@ -188,25 +173,8 @@ const godvile = async () => {
     await browser.close();
 
     if (shot) {
-        return new Promise(function (resolve, reject) {
-            cloudinary.v2.uploader.upload_stream({
-                    public_id: `godvile/${action}`
-                },
-                function (error, cloudinary_result) {
-                    if (error) {
-                        console.error('Upload to cloudinary failed: ', error);
-                        reject(error);
-                    } else {
-                        console.log({
-                            time: cloudinary_result.created_at,
-                            url: cloudinary_result.secure_url
-                        });
-                        resolve(cloudinary_result);
-                    }
-                }
-            ).end(shot);
-        });
+        return cloudinary.sendScreenshootToCloudinary(shot, action);
     }
-
+    throw Error("no screenshoot");
     // await new Promise(done => setTimeout(done, 1000 * 60 * 60));
 };
