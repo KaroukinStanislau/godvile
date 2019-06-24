@@ -3,6 +3,7 @@ var express = require('express');
 var moment = require('moment');
 var fs = require("fs");
 var app = express();
+const database = require('./database');
 
 var config = require('./config');
 var cloudinary = require('./cloudinary');
@@ -16,16 +17,13 @@ app.listen(config.app.port, function () {
     console.log(`Example app listening on port ${config.app.port}!`);
 });
 
-var previousExecution;
 var currentExecution;
 
-async function takeScreenshoot(res) {
-    if (! await isExecutedRecently()) {
-        // if (false) {
+function takeScreenshoot(res) {
+    if (!isExecutedRecently()) {
         godvile()
             .then(data => {
-                previousExecution = moment();
-                writeToFile();
+                database.saveTime();
                 res.send(`<a href="${data.secure_url}">image</a>`)
             })
             .catch(err => {
@@ -33,60 +31,19 @@ async function takeScreenshoot(res) {
                 res.status(500).send(err.toString());
             });
     } else {
-        console.log(`time of execution has not come, last was ${getDiffAsHours()} hours ago. current delay: ${config.app.hoursBetweenExec}`);
+        console.log(`time of execution has not come, last was ${getDiffAsHours(database.getTime())} hours ago. current delay: ${config.app.hoursBetweenExec}`);
         res.send('time of execution has not come');
     }
 }
 
-async function isExecutedRecently() {
-    if (!previousExecution) {
-        try {
-            var a = await readFromFile();
-        } catch (err) {
-            return false;
-        }
-        if (moment(a, "YYYY-MM-DD-HH-mm-ss").isValid()) {
-            previousExecution = moment(a, "YYYY-MM-DD-HH-mm-ss");
-        }
-        if (!previousExecution) {
-            return false;
-        }
-    }
-    if (getDiffAsHours() >= config.app.hoursBetweenExec) {
+function isExecutedRecently() {
+    if (getDiffAsHours(database.getTime()) >= config.app.hoursBetweenExec) {
         return false;
     }
     return true;
 }
 
-function writeToFile() {
-    return new Promise((resolve, reject) => {
-        fs.writeFile(config.app.fileName, moment(previousExecution, "YYYY-MM-DD-HH-mm-ss").format(), (err) => {
-            if (err) {
-                console.log(err);
-                reject(err);
-            } else {
-                console.log("Successfully Written to File.");
-                resolve();
-            }
-        });
-    });
-}
-
-function readFromFile() {
-    return new Promise((resolve, reject) => {
-        fs.readFile(config.app.fileName, function (err, buf) {
-            if (err) {
-                console.log(err)
-                reject(err);
-            } else {
-                console.log(`readed from file ${buf.toString()}`);
-                resolve(buf.toString());
-            }
-        });
-    });
-}
-
-function getDiffAsHours() {
+function getDiffAsHours(previousExecution) {
     return moment.duration(currentExecution.diff(previousExecution)).asHours();
 }
 
