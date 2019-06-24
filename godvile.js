@@ -3,27 +3,25 @@ var express = require('express');
 var moment = require('moment');
 var fs = require("fs");
 var app = express();
-const database = require('./database');
 
-var config = require('./config');
-var cloudinary = require('./cloudinary');
-
+var config = require('./util/config');
+var cloudinary = require('./service/cloudinary');
+const database = require('./service/database');
+var constants = require('./util/constants');
 
 app.get('/', function (req, res) {
-    currentExecution = moment();
-    takeScreenshoot(res);
+    var currentExecution = moment();
+    takeScreenshoot(res, currentExecution);
 });
 app.listen(config.app.port, function () {
     console.log(`Example app listening on port ${config.app.port}!`);
 });
 
-var currentExecution;
-
-function takeScreenshoot(res) {
-    if (!isExecutedRecently()) {
-        godvile()
+function takeScreenshoot(res, currentExecution) {
+    if (!isExecutedRecently(currentExecution, database.getTime())) {
+        godvile(currentExecution)
             .then(data => {
-                database.saveTime();
+                database.saveTime(currentExecution);
                 res.send(`<a href="${data.secure_url}">image</a>`)
             })
             .catch(err => {
@@ -31,28 +29,28 @@ function takeScreenshoot(res) {
                 res.status(500).send(err.toString());
             });
     } else {
-        console.log(`time of execution has not come, last was ${getDiffAsHours(database.getTime())} hours ago. current delay: ${config.app.hoursBetweenExec}`);
+        console.log(`time of execution has not come, last was ${getDiffAsHours(currentExecution, database.getTime())} hours ago. current delay: ${config.app.hoursBetweenExec}`);
         res.send('time of execution has not come');
     }
 }
 
-function isExecutedRecently() {
-    if (getDiffAsHours(database.getTime()) >= config.app.hoursBetweenExec) {
+function isExecutedRecently(currentExecution, previousExecution) {
+    if (getDiffAsHours(currentExecution, previousExecution) >= config.app.hoursBetweenExec) {
         return false;
     }
     return true;
 }
 
-function getDiffAsHours(previousExecution) {
+function getDiffAsHours(currentExecution, previousExecution) {
     return moment.duration(currentExecution.diff(previousExecution)).asHours();
 }
 
-const godvile = async () => {
-    const d = new Date();
-    const current_time = `${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}_${d.getMinutes()}`;
+const godvile = async (currentExecution) => {
     let shot;
 
-    console.log('runned at ' + current_time);
+    var timeString = currentExecution.format(constants.TIME_FORMAT);
+
+    console.log('runned at ' + timeString);
 
     const browser = await puppeteer.launch({
         args: [
@@ -97,10 +95,10 @@ const godvile = async () => {
             await makeGood[0].click();
             await page.waitFor(10 * 1000);
             shot = await page.screenshot({
-                // path: 'make good ' + current_time + '.png'
+                // path: 'make good ' + timeString + '.png'
             });
             makeAction = true;
-            action = 'make good at ' + current_time;
+            action = 'make good at ' + timeString;
             console.log(action);
         } else {
             const resurrect = await page.$x("//a[contains(text(), 'Воскресить')]");
@@ -109,10 +107,10 @@ const godvile = async () => {
                     await resurrect[0].click();
                     await page.waitFor(10 * 1000);
                     shot = await page.screenshot({
-                        // path: 'resurrect ' + current_time + '.png'
+                        // path: 'resurrect ' + timeString + '.png'
                     });
                     makeAction = true;
-                    action = 'resurrect at ' + current_time;
+                    action = 'resurrect at ' + timeString;
                     console.log(action);
                 }
             }
@@ -120,10 +118,10 @@ const godvile = async () => {
 
     }
     if (!makeAction) {
-        action = "can't find any link at " + current_time;
+        action = "can't find any link at " + timeString;
         console.log(action);
         shot = await page.screenshot({
-            // path: 'Link not found ' + current_time + '.png'
+            // path: 'Link not found ' + timeString + '.png'
         });
     }
 

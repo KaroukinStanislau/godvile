@@ -1,5 +1,5 @@
 var cloudinary = require('cloudinary');
-var config = require('./config');
+var config = require('../util/config');
 
 cloudinary.config(config.cloudinary);
 
