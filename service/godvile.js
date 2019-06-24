@@ -1,51 +1,10 @@
 const puppeteer = require('puppeteer');
-var express = require('express');
-var moment = require('moment');
-var fs = require("fs");
-var app = express();
 
-var config = require('./util/config');
-var cloudinary = require('./service/cloudinary');
-const database = require('./service/database');
-var constants = require('./util/constants');
+var constants = require('../util/constants');
+var config = require('../util/config');
+var cloudinary = require('./cloudinary');
 
-app.get('/', function (req, res) {
-    var currentExecution = moment();
-    takeScreenshoot(res, currentExecution);
-});
-app.listen(config.app.port, function () {
-    console.log(`Example app listening on port ${config.app.port}!`);
-});
-
-function takeScreenshoot(res, currentExecution) {
-    if (!isExecutedRecently(currentExecution, database.getTime())) {
-        godvile(currentExecution)
-            .then(data => {
-                database.saveTime(currentExecution);
-                res.send(`<a href="${data.secure_url}">image</a>`)
-            })
-            .catch(err => {
-                console.log(err);
-                res.status(500).send(err.toString());
-            });
-    } else {
-        console.log(`time of execution has not come, last was ${getDiffAsHours(currentExecution, database.getTime())} hours ago. current delay: ${config.app.hoursBetweenExec}`);
-        res.send('time of execution has not come');
-    }
-}
-
-function isExecutedRecently(currentExecution, previousExecution) {
-    if (getDiffAsHours(currentExecution, previousExecution) >= config.app.hoursBetweenExec) {
-        return false;
-    }
-    return true;
-}
-
-function getDiffAsHours(currentExecution, previousExecution) {
-    return moment.duration(currentExecution.diff(previousExecution)).asHours();
-}
-
-const godvile = async (currentExecution) => {
+const process = async (currentExecution) => {
     let shot;
 
     var timeString = currentExecution.format(constants.TIME_FORMAT);
@@ -63,18 +22,6 @@ const godvile = async (currentExecution) => {
         ignoreHTTPSErrors: true
     });
     const page = await browser.newPage();
-
-    process.on('unhandledRejection', (reason, p) => {
-        console.error('Unhandled Rejection at: Promise', p, 'reason:', reason);
-        handleClose(`I was rejected`);
-    });
-
-    function handleClose(msg) {
-        console.log(msg);
-        page.close();
-        browser.close();
-        process.exit(1);
-    }
 
     await page.goto('https://godville.net/superhero');
     const login = await page.$('#username');
@@ -133,3 +80,7 @@ const godvile = async (currentExecution) => {
     throw Error("no screenshoot");
     // await new Promise(done => setTimeout(done, 1000 * 60 * 60));
 };
+
+module.exports = {
+    process
+}
