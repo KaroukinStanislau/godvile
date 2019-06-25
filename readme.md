@@ -9,7 +9,7 @@ API_SECRET=''
 GODVILE_USERNAME=''  
 GODVILE_PASSWORD=''  
 
-#app properties
+#app properties  
 HOURS_BETWEEN_SCREENSHOOTS=  
 FILE_NAME=''  
 
