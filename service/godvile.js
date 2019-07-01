@@ -29,9 +29,11 @@ const process = async (currentExecution) => {
     const password = await page.$('#password');
     await password.type(config.app.password_val);
     const input = await page.$('input[type=submit][value="Войти!"');
-    await input.click();
 
-    await page.waitForNavigation();
+    await Promise.all([
+        input.click(),
+        page.waitForNavigation()]
+    );
 
     var makeAction = false;
     var action = '';
